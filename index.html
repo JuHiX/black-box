@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+ <head>
+    <meta charset="UTF-8">
+    <title>Tehtävä 45-48</title>
+    <style>
+      th, td {
+        padding: 4px;
+      }
+      #elementit > label input {
+        display: block;
+      }
+      input.text {
+        margin-bottom:12px; width:95%; padding: .4em;
+      }
+      .ui-dialog .ui-state-error {
+        padding: .3em;
+      }
+      .validateTips {
+        border: 1px solid transparent; padding: 0.3em;
+      }
+      .overflow {
+      height: 200px;
+    }
+    </style>
+    <link rel="stylesheet" href="style/jquery-ui.css">
+    <script src="js/jquery-3.4.1.min.js"></script>
+    <script src="js/jquery-ui.js"></script>
+    <script>
+      $(document).ready(function() {
+        $("#taulu").hide();
+        var _nimi;
+        var _osoite;
+        var _tyyppi;
+        var _data;
+        var tyypit;
+        var dialog, form,
+          dAsty = $("#dAsty"),
+          dNimi = $("#dNimi"),
+          dOsoite = $("#dOsoite"),
+          dPostinro = $("#dPostinro"),
+          dPostitmp = $("#dPostitmp"),
+          kaikkiKentat = $([]).add(dNimi).add(dOsoite).add(dPostinro).add(dPostitmp),
+          vinkit = $(".validateTips");
+
+          function updateTips(t) {
+          vinkit
+            .text(t)
+            .addClass("ui-state-highlight");
+          setTimeout(function() {
+            vinkit.removeClass("ui-state-highlight", 1500);
+          }, 500);
+        }
+
+        function tarkistaPituus(o, n, min, max) {
+          if (o.val().length < min || o.val().length > max) {
+            o.addClass("ui-state-error");
+            if (min == max) {
+              updateTips(n + "-kentän pituus pitää olla " + min + " merkin pituinen");
+            } else {
+              updateTips(n + "-kentän pituus pitää olla välillä " + min + " - " + max);
+            }s            
+            return false;
+          } else {
+            return true;
+          }
+        }
+
+          function lisaaUusiAsiakas() {
+          _tyyppi = $("#dAsty option:selected").val();
+          var valid = true;
+          kaikkiKentat.removeClass("ui-state-error");
+          
+          valid = valid && tarkistaPituus(dNimi, "Nimi", 3, 80);
+          valid = valid && tarkistaPituus(dOsoite, "Osoite", 3, 80);
+          valid = valid && tarkistaPituus(dPostinro, "Postinumero", 5, 5);
+          valid = valid && tarkistaPituus(dPostitmp, "Postitoimipaikka", 3, 80);
+
+          if (valid) {
+            $.post("http://localhost:3002/Asiakas", $("#formi").serialize(), function() {
+              $("#nimi").val("");
+              $("#osoite").val("");
+              fetch(_tyyppi);
+            });
+            dialog.dialog( "close" );            
+          }
+          return valid;
+        }
+
+        $("button").click(function() {
+          fetch($("#asiakastyypit option:selected").attr("avain"));
+        });
+
+          dialog = $("#dialog-form").dialog({
+          autoOpen: false,
+          height: 560,
+          width: 350,
+          modal: true,
+          buttons: {
+            "Lisää": lisaaUusiAsiakas,
+            Peruuta: function() {
+              dialog.dialog( "close" );
+            }
+          },
+          close: function() {
+            form[0].reset();
+            kaikkiKentat.removeClass("ui-state-error");
+          }
+        });
+
+        form = dialog.find("form").on("submit", function(event) {
+          event.preventDefault();
+          lisaaUusiAsiakas();
+        })
+
+        $("#lisaaUusi").on("click", function() {
+          $("#dAsty").selectmenu();
+          dialog.dialog("open");
+        });
+
+        poista = function(_avain) {
+          $.get("http://localhost:3002/Asiakas", {avain: _avain}, function(data) {
+            fetch($("#asiakastyypit option:selected").attr("avain"));
+          }).fail(function(jqXHR) {
+            $("#tulos").text("VIRHE: " + jqXHR.responseText);
+          });
+        }
+
+        fetch = function(_tyyppi) {
+          _nimi = $("#nimi").val();
+          _osoite = $("#osoite").val();
+          switch(_tyyppi) {
+            case "1": 
+              $("#asiakastyypit").val('1');
+              _data = {NIMI: _nimi, OSOITE: _osoite, ASTY_AVAIN: _tyyppi}
+              break;
+            case "2": 
+              $("#asiakastyypit").val('2');
+              _data = {NIMI: _nimi, OSOITE: _osoite, ASTY_AVAIN: _tyyppi}
+              break;
+            case "3": 
+              $("#asiakastyypit").val('3');
+              _data = {NIMI: _nimi, OSOITE: _osoite, ASTY_AVAIN: _tyyppi}
+              break;
+            case "4": 
+              $("#asiakastyypit").val('4');
+              _data = {NIMI: _nimi, OSOITE: _osoite, ASTY_AVAIN: _tyyppi}
+              break;
+            default: 
+              $("#asiakastyypit").val('');
+              _data = {NIMI: _nimi, OSOITE: _osoite};
+              break;
+          }
+          $("#taulu tr").remove();
+          $.get("http://localhost:3002/Asiakas", _data, function(data) {
+            if (data.length > 0) {
+              $("#taulu").append('<tr><th>Nimi</th><th>Osoite</th><th>Postinro</th><th>Postitoimipaikka</th><th>Luontipvm</th></tr>');
+              $("#tulos").text("Hakutuloksia " + data.length + " kpl");
+            $.each(data, function(key, value) {
+              $("#taulu").append('<tr><td>' + value.NIMI + '</td><td>' + value.OSOITE + '</td>' +
+              '<td>' + value.POSTINRO + '</td>' + '<td>' + value.POSTITMP + '</td>' + '<td>' + value.LUONTIPVM + '</td></tr>');
+            })
+            $("#taulu").show();
+            } else {
+              $("#taulu").hide();
+              $("#tulos").text("Hakutuloksia " + data.length + " kpl");
+            }
+          }).fail(function(jqXHR) {
+            $("#tulos").text("VIRHE: " + jqXHR.responseText);
+          });
+        }
+
+          $.get("http://localhost:3002/Types", function(data) {
+            if (data.length > 0) {
+              tyypit = data;
+              $.each(tyypit, function(key, value) {
+              $("#asiakastyypit").append('<option avain="' + value.Avain + '" value="' + value.Avain + '">' + value.Selite + '</option>');
+              $("#dAsty").append('<option name="asty_avain" value="' + value.Avain + '">' + value.Selite + '</option>');
+            })
+            }
+          }).fail(function(jqXHR) {
+            $("#tulos").text("VIRHE: " + jqXHR.responseText);
+          });
+      });
+    </script>
+ </head>
+ <body>
+   <label for="nimi">Nimi: </label>
+   <input id="nimi">
+   <label for="osoite">Osoite: </label>
+   <input id="osoite">
+   <label for="osoite">Asiakastyyppi: </label>
+   <select id="asiakastyypit">
+    <option avain="" value="">Kaikki</option>
+   </select>
+   <button>Hae</button>
+   <a href="#" id="lisaaUusi">Lisää uusi asiakas</a>
+   <p id="tulos"></p>
+   <table border="1" id="taulu">
+
+   </table>
+   <div id="dialog-form" title="Lisää uusi asiakas">
+    <p class="validateTips">Kaikki kentät ovat pakollisia</pclass="validateTips">
+      <form id="formi">
+        <fieldset id="elementit">
+          <label for="nimi">Nimi</label>
+          <input type="text" name="nimi" id="dNimi" value="" class="text ui-widget-content ui-corner-all">
+          <label for="osoite">Osoite</label>
+          <input type="text" name="osoite" id="dOsoite" value="" class="text ui-widget-content ui-cornel-all">
+          <label for="postinro">Postinumero</label>
+          <input type="text" name="postinro" id="dPostinro" value="" class="text ui-widget-content ui-cornel-all">
+          <label for="postitmp">Postitoimipaikka</label>
+          <input type="text" name="postitmp" id="dPostitmp" value="" class="text ui-widget-content ui-cornel-all">
+          <label for="asty_avain">Asiakastyyppi</label>
+        <select name="asty_avain" id="dAsty">
+
+        </select>
+        <input type="submit" tabindex="-1" style="position:absolute; top:-1000px">
+      </fieldset>
+    </form>
+  </div>
+ </body>
+</html>
